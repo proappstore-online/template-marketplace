@@ -9,10 +9,11 @@
     "prebuild": "npx -y @proappstore/cli@latest check",
     "build": "pnpm --filter @APPNAME/web build",
     "preview": "pnpm --filter @APPNAME/web preview",
-    "lint": "echo 'Lint configured per app; extend lintstagedrc.json with eslint/prettier'",
+    "lint": "echo 'Lint configured per app; extend .lintstagedrc.js with eslint/prettier'",
     "typecheck": "pnpm --filter @APPNAME/web exec tsc -b",
     "test": "pnpm --filter @APPNAME/web exec tsc -b && node --no-warnings qa/actions.mjs",
-    "prepare": "husky install"
+    "test:lint-staged": "node --no-warnings qa/lint-staged-regression.mjs",
+    "prepare": "husky"
   },
   "devDependencies": {
     "husky": "^9.1.7",
