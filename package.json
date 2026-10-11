@@ -11,7 +11,7 @@
     "preview": "pnpm --filter @APPNAME/web preview",
     "lint": "echo 'Lint configured per app; extend .lintstagedrc.js with eslint/prettier'",
     "typecheck": "pnpm --filter @APPNAME/web exec tsc -b",
-    "test": "pnpm --filter @APPNAME/web exec tsc -b && node --experimental-strip-types --no-warnings qa/browse-request-state.mjs && node --no-warnings qa/actions.mjs && node --no-warnings qa/deploy-workflow-regression.mjs && node --no-warnings qa/generated-app-regression.mjs",
+    "test": "pnpm --filter @APPNAME/web exec tsc -b && pnpm --filter @APPNAME/web test:rendered && node --experimental-strip-types --no-warnings qa/browse-request-state.mjs && node --no-warnings qa/actions.mjs && node --no-warnings qa/deploy-workflow-regression.mjs && node --no-warnings qa/generated-app-regression.mjs",
     "test:lint-staged": "node --no-warnings qa/lint-staged-regression.mjs",
     "prepare": "husky"
   },
