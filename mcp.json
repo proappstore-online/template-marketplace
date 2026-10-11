@@ -2,9 +2,9 @@
   "tools": [
     {
       "name": "list_listings",
-      "description": "Public catalogue page, newest first. Only active listings; keyset pagination \u2014 pass the last row's created_at as `before` for the next page. No personal data beyond the owner's chosen display name.",
+      "description": "Public catalogue page, newest first. Only active listings; keyset pagination \u2014 pass both created_at and id from the last row as before and before_id for the next page. No personal data beyond the owner's chosen display name.",
       "operation": "query",
-      "sql": "SELECT id, owner_id, owner_name, status, title, description, category, location, lat, lng, price, price_unit, images, created_at, updated_at FROM listings WHERE status = 'active' AND (:category IS NULL OR category = :category) AND (:before IS NULL OR created_at < :before) ORDER BY created_at DESC LIMIT 24",
+      "sql": "SELECT id, owner_id, owner_name, status, title, description, category, location, lat, lng, price, price_unit, images, created_at, updated_at FROM listings WHERE status = 'active' AND (:category IS NULL OR category = :category) AND (:before IS NULL OR created_at < :before OR (created_at = :before AND id < :before_id)) ORDER BY created_at DESC, id DESC LIMIT 24",
       "params": {
         "category": {
           "type": "string",
@@ -13,7 +13,12 @@
         },
         "before": {
           "type": "integer",
-          "description": "created_at of the last row on the previous page (keyset cursor)",
+          "description": "created_at of the last row on the previous page (use together with before_id)",
+          "optional": true
+        },
+        "before_id": {
+          "type": "string",
+          "description": "id of the last row on the previous page (use together with before)",
           "optional": true
         }
       },
@@ -21,13 +26,28 @@
     },
     {
       "name": "search_listings",
-      "description": "Public search over active listings by title, description or location (substring match, case-insensitive). Same columns as list_listings.",
+      "description": "Public search over active listings by title, description or location (substring match, case-insensitive), optionally composed with a category filter. Keyset pagination uses both before and before_id from the last row. Same columns as list_listings.",
       "operation": "query",
-      "sql": "SELECT id, owner_id, owner_name, status, title, description, category, location, lat, lng, price, price_unit, images, created_at, updated_at FROM listings WHERE status = 'active' AND (title LIKE '%' || :q || '%' OR description LIKE '%' || :q || '%' OR location LIKE '%' || :q || '%') ORDER BY created_at DESC LIMIT 50",
+      "sql": "SELECT id, owner_id, owner_name, status, title, description, category, location, lat, lng, price, price_unit, images, created_at, updated_at FROM listings WHERE status = 'active' AND (title LIKE '%' || :q || '%' OR description LIKE '%' || :q || '%' OR location LIKE '%' || :q || '%') AND (:category IS NULL OR category = :category) AND (:before IS NULL OR created_at < :before OR (created_at = :before AND id < :before_id)) ORDER BY created_at DESC, id DESC LIMIT 24",
       "params": {
         "q": {
           "type": "string",
           "description": "Search text (no wildcards needed)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional category filter composed with the text search",
+          "optional": true
+        },
+        "before": {
+          "type": "integer",
+          "description": "created_at of the last row on the previous page (use together with before_id)",
+          "optional": true
+        },
+        "before_id": {
+          "type": "string",
+          "description": "id of the last row on the previous page (use together with before)",
+          "optional": true
         }
       },
       "requires_auth": false

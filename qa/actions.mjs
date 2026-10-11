@@ -85,6 +85,35 @@ ok(call('set_listing_status', OWNER, { id: L, status: 'deleted' }) === 0, 'unkno
 call('set_listing_status', OWNER, { id: L, status: 'active' })
 ok(call('search_listings', null, { q: 'SUNNY' }).length === 1, 'public search is case-insensitive')
 
+// --- Public catalogue keyset pagination and composed filters -------------------------------
+// Reproduce the formerly-unreachable timestamp tie against the real manifest SQL.
+const insertListing = db.prepare('INSERT INTO listings (id, owner_id, owner_name, status, title, description, category, location, images, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+for (let number = 0; number < 50; number++) {
+  insertListing.run(`tied-${String(number).padStart(2, '0')}`, OWNER, 'Olive', 'active', 'Shared keyword', '', number % 2 ? 'rent' : 'sale', '', '[]', 1000, 1000)
+}
+
+function allPages(name, params) {
+  const rows = []
+  let cursor = null
+  for (;;) {
+    const page = call(name, null, { ...params, before: cursor?.created_at ?? null, before_id: cursor?.id ?? null })
+    rows.push(...page)
+    if (page.length < 24) return rows
+    const last = page.at(-1)
+    cursor = { created_at: last.created_at, id: last.id }
+  }
+}
+
+const browsed = allPages('list_listings', { category: null })
+const searched = allPages('search_listings', { q: 'Shared keyword', category: null })
+const saleSearch = allPages('search_listings', { q: 'Shared keyword', category: 'sale' })
+const rentSearch = allPages('search_listings', { q: 'Shared keyword', category: 'rent' })
+ok(searched.length === 50 && new Set(searched.map((row) => row.id)).size === 50, 'search keyset pagination preserves all 50 tied rows across multiple pages')
+ok(browsed.filter((row) => row.id.startsWith('tied-')).length === 50, 'browse keyset pagination preserves every tied row')
+ok(saleSearch.length === 25 && saleSearch.every((row) => row.category === 'sale'), 'text and sale category filters compose across pages')
+ok(rentSearch.length === 25 && rentSearch.every((row) => row.category === 'rent'), 'changing the category produces the independently filtered result set')
+ok(call('search_listings', null, { q: 'no matching title', category: 'sale' }).length === 0, 'composed filters return an empty result set when nothing matches')
+
 // --- Requests -------------------------------------------------------------------------------
 ok(call('create_request', OWNER, { id: 'r-own', listing_id: L, requester_name: 'Olive' }) === 0, 'owner cannot request their own listing')
 ok(call('create_request', SEEKER, { id: 'r-1', listing_id: L, requester_name: 'Sam', note: 'Two nights?' }) === 1, 'seeker requests')

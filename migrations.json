@@ -23,6 +23,10 @@
     {
       "name": "0006_safety",
       "sql": "CREATE TABLE IF NOT EXISTS blocks (blocker_id TEXT NOT NULL, blocked_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (blocker_id, blocked_id)); CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks (blocked_id); CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, reporter_id TEXT NOT NULL, reported_id TEXT NOT NULL, listing_id TEXT, reason TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_reports_reported ON reports (reported_id, created_at DESC)"
+    },
+    {
+      "name": "0007_listings_public_keyset",
+      "sql": "CREATE INDEX IF NOT EXISTS idx_listings_public_keyset ON listings (status, created_at DESC, id DESC)"
     }
   ]
 }
