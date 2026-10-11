@@ -87,7 +87,7 @@ export default function App() {
   }
 
   return (
-    <ProShell app={app} appName="APPNAME" nav={NAV} renderNav={({ items }) => <HashNav items={items} />}>
+    <ProShell app={app} appName="APPNAME" branding="app" nav={NAV} renderNav={({ items }) => <HashNav items={items} />}>
       <div className="flex-1"><Page route={route} /></div>
     </ProShell>
   )
@@ -114,9 +114,6 @@ function PublicShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <Header right={<SignInButton app={app} label="Sign in" />} />
       <main id="main" className="flex-1">{children}</main>
-      <footer className="border-t border-[var(--line)] px-6 py-4 text-center text-xs text-[var(--muted)]">
-        <a href="https://proappstore.online" className="font-semibold text-[var(--accent)] underline-offset-4 hover:underline">Built for ProAppStore</a>
-      </footer>
     </div>
   )
 }
