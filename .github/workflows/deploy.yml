@@ -16,9 +16,11 @@ concurrency:
 
 jobs:
   deploy:
-    # template-app itself is never served (no registry entry) and its build
-    # fails its own placeholder check by design; the apps copied from it deploy.
-    if: github.event.repository.name != 'template-app'
+    # Canonical templates are never served (no registry entry) and retain
+    # APPNAME placeholders by design; instantiated apps copied from them deploy.
+    # Keep this an exact repository-name check: a generated app must not be
+    # skipped merely because its name happens to contain "template".
+    if: github.event.repository.name != 'template-app' && github.event.repository.name != 'template-marketplace'
     runs-on: ubuntu-latest
     outputs:
       has_e2e: ${{ steps.e2e-check.outputs.has_e2e }}
