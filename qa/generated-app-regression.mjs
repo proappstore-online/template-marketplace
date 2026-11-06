@@ -16,6 +16,11 @@ const fixture = mkdtempSync(join(tmpdir(), 'template-marketplace-generated-'))
 const textExtensions = new Set(['.html', '.js', '.json', '.md', '.mjs', '.ts', '.tsx', '.yaml', '.yml'])
 
 function run(command, args) {
+  // Invoke pnpm through Node so Windows does not need to spawn a .cmd file.
+  if (command === 'pnpm') {
+    args = [process.env.npm_execpath, ...args]
+    command = process.execPath
+  }
   const result = spawnSync(command, args, { cwd: fixture, encoding: 'utf8', env: process.env })
   if (result.error) throw result.error
   assert.equal(result.status, 0, `${command} ${args.join(' ')} failed:\n${result.stdout}${result.stderr}`)
@@ -37,8 +42,8 @@ try {
     filter: (source) => !['.git', 'dist', 'node_modules'].includes(basename(source)),
   })
   // Reuse the installed dependency links while keeping the generated workspace isolated.
-  symlinkSync(join(root, 'node_modules'), join(fixture, 'node_modules'))
-  symlinkSync(join(root, 'web', 'node_modules'), join(fixture, 'web', 'node_modules'))
+  symlinkSync(join(root, 'node_modules'), join(fixture, 'node_modules'), 'junction')
+  symlinkSync(join(root, 'web', 'node_modules'), join(fixture, 'web', 'node_modules'), 'junction')
 
   const appName = 'market-regression'
   replaceAppName(fixture, appName)
@@ -68,6 +73,18 @@ try {
     512: '13f7625cfa333cfd1d8c873e59d819e2206d6a514f3aff30141f86355cf85709',
   }
   const builtHtml = readFileSync(join(fixture, 'web/dist/index.html'), 'utf8')
+  const manifestHref = builtHtml.match(/rel="manifest" href="([^"]+)"/)?.[1]
+  assert(manifestHref, 'built HTML links to the install manifest')
+  assert.equal(new URL(manifestHref, 'https://example.test').pathname, '/manifest.webmanifest')
+  assert.deepEqual(manifest.icons.map(({ sizes, purpose }) => [sizes, purpose]), [
+    ['192x192', 'any'], ['512x512', 'any'], ['512x512', 'maskable'],
+  ])
+  for (const icon of manifest.icons) assert.equal(icon.type, 'image/png')
+  assert.deepEqual(
+    readFileSync(join(fixture, 'web/dist/og-image.png')),
+    readFileSync(join(root, 'web/public/og-image.png')),
+    'preserve custom marketplace social artwork',
+  )
   const iconRefs = manifest.icons.map(icon => [icon.src, Number(icon.sizes.split('x')[0])])
   for (const rel of ['icon', 'apple-touch-icon']) {
     const href = builtHtml.match(new RegExp(`<link rel="${rel}" href="([^"]+)"`))?.[1]

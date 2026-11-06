@@ -15,6 +15,12 @@ import { spawnSync } from 'node:child_process'
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const fixture = mkdtempSync(join(tmpdir(), 'template-marketplace-lint-staged-'))
 function run(command, args, options = {}) {
+  // pnpm's lifecycle entry point is a JS file; spawning its .cmd shim directly
+  // is unsupported by Node on Windows. Keep argument boundaries without a shell.
+  if (command === 'pnpm') {
+    args = [process.env.npm_execpath, ...args]
+    command = process.execPath
+  }
   const result = spawnSync(command, args, {
     cwd: fixture,
     encoding: 'utf8',
@@ -44,8 +50,8 @@ try {
     filter: (source) => !['.git', 'node_modules', 'dist'].includes(basename(source)),
   })
   // Reuse the installed dependencies while preserving an otherwise isolated app.
-  symlinkSync(join(root, 'node_modules'), join(fixture, 'node_modules'))
-  symlinkSync(join(root, 'web', 'node_modules'), join(fixture, 'web', 'node_modules'))
+  symlinkSync(join(root, 'node_modules'), join(fixture, 'node_modules'), 'junction')
+  symlinkSync(join(root, 'web', 'node_modules'), join(fixture, 'web', 'node_modules'), 'junction')
 
   const appName = 'tradies'
   for (const relative of ['package.json', 'web/package.json']) {
