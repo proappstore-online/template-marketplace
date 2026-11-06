@@ -4,6 +4,7 @@
  * source placeholder before running the generated app's check, typecheck and build.
  */
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
@@ -60,6 +61,28 @@ try {
   run('pnpm', ['build'])
 
   const manifest = JSON.parse(readFileSync(join(fixture, 'web/dist/manifest.webmanifest'), 'utf8'))
+  // Keep these neutral placeholders recognized by PAS's default-icon detector,
+  // so CLI/MCP provisioning personalizes them instead of preserving them as artwork.
+  const iconHashes = {
+    192: '5115a5755bf951f3e772d9d41d8203258bb44666ccd56763698e9b30a772cb2c',
+    512: '13f7625cfa333cfd1d8c873e59d819e2206d6a514f3aff30141f86355cf85709',
+  }
+  const builtHtml = readFileSync(join(fixture, 'web/dist/index.html'), 'utf8')
+  const iconRefs = manifest.icons.map(icon => [icon.src, Number(icon.sizes.split('x')[0])])
+  for (const rel of ['icon', 'apple-touch-icon']) {
+    const href = builtHtml.match(new RegExp(`<link rel="${rel}" href="([^"]+)"`))?.[1]
+    assert(href, `built HTML includes ${rel}`)
+    iconRefs.push([href, 192])
+  }
+  for (const [src, size] of iconRefs) {
+    const url = new URL(src, 'https://example.test')
+    assert(url.search, 'invalidate cached F icons')
+    const bytes = readFileSync(join(fixture, 'web/dist', url.pathname))
+    assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a')
+    assert.equal(bytes.readUInt32BE(16), size)
+    assert.equal(bytes.readUInt32BE(20), size)
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), iconHashes[size])
+  }
   assert.deepEqual(
     { name: manifest.name, short_name: manifest.short_name, description: manifest.description },
     { name: appName, short_name: appName, description: 'Browse listings, save favourites, send requests and message owners.' },
